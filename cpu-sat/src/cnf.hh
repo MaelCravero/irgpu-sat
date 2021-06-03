@@ -31,7 +31,7 @@ public:
 
 private:
     /// Get the number of variables in the expression
-    unsigned get_nb_vars() const;
+    unsigned nb_vars_;
 
     /// The CNF expression
     expression expr_;

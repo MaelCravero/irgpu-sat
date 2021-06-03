@@ -13,6 +13,11 @@ Cnf::Cnf(std::istream&& input)
 {
     std::string line;
     std::getline(input, line); // skip dimacs header
+
+    unsigned nb_clauses;
+    std::sscanf(line.c_str(), "p cnf %u %u", &nb_vars_, &nb_clauses);
+
+    std::size_t pos; // Track the positions for recovering specific clauses
     while (std::getline(input, line))
     {
         clause c;
@@ -39,10 +44,9 @@ void Cnf::append(const Cnf& other)
 
 std::ostream& Cnf::dump(std::ostream& ostr) const
 {
-    auto variables = get_nb_vars();
     auto clauses = expr_.size();
 
-    ostr << "p cnf " << variables << " " << clauses << "\n";
+    ostr << "p cnf " << nb_vars_ << " " << clauses << "\n";
 
     for (const auto& clause : expr_)
     {
@@ -53,16 +57,6 @@ std::ostream& Cnf::dump(std::ostream& ostr) const
     }
 
     return ostr;
-}
-
-unsigned Cnf::get_nb_vars() const
-{
-    using namespace std::views;
-    auto abs = expr_ | join | transform([](auto e) { return std::abs(e); });
-
-    auto max = std::max_element(abs.begin(), abs.end());
-
-    return *max;
 }
 
 namespace
@@ -105,12 +99,10 @@ std::optional<Cnf::solution> Cnf::solve(bool trace) const
 {
     using std::views::iota;
 
-    auto nb_vars = get_nb_vars();
-
-    for (auto n : iota(0u, std::pow(2, nb_vars)))
+    for (auto n : iota(0u, std::pow(2, nb_vars_)))
     {
         solution s;
-        for (auto i : iota(0u, nb_vars))
+        for (auto i : iota(0u, nb_vars_))
         {
             s.push_back((n >> i) % 2);
         }
