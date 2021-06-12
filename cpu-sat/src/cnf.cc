@@ -5,8 +5,11 @@
 #include <cmath>
 #include <iostream>
 #include <ranges>
+#include <set>
 #include <sstream>
 #include <string>
+
+#include "utils.hh"
 
 Cnf::Cnf(std::istream&& input)
     : Cnf()
@@ -17,7 +20,6 @@ Cnf::Cnf(std::istream&& input)
     unsigned nb_clauses;
     std::sscanf(line.c_str(), "p cnf %u %u", &nb_vars_, &nb_clauses);
 
-    std::size_t pos; // Track the positions for recovering specific clauses
     while (std::getline(input, line))
     {
         clause c;
@@ -40,6 +42,42 @@ void Cnf::append(const Cnf& other)
 {
     for (auto clause : other.expr_)
         expr_.push_back(clause);
+}
+
+bool Cnf::unit_propagation()
+{
+    std::set<term> true_constants;
+    std::set<term> false_constants;
+
+    utils::erase_if(expr_, [&](auto clause) {
+        if (clause.size() == 1)
+        {
+            if (clause[0] > 0)
+                true_constants.insert(clause[0]);
+            else
+                false_constants.insert(clause[0]);
+        }
+        return clause.size() == 1;
+    });
+
+    if (true_constants.empty() && false_constants.empty())
+        return true;
+
+    for (auto constant : true_constants)
+        if (false_constants.contains(-constant))
+            return false;
+
+    for (auto constant : true_constants)
+        utils::erase_if(expr_, [&](auto clause) {
+            return std::find(clause.begin(), clause.end(), constant)
+                != clause.end();
+        });
+
+    for (auto& clause : expr_)
+        utils::erase_if(
+            clause, [&](auto elt) { return false_constants.contains(elt); });
+
+    return unit_propagation();
 }
 
 std::ostream& Cnf::dump(std::ostream& ostr) const
