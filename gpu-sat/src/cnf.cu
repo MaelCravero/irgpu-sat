@@ -62,7 +62,6 @@ namespace host
         return ostr;
     }
 
-
     std::optional<solution> Cnf::solve() const
     {
         std::size_t max_val = std::pow(2, nb_vars_);
@@ -78,10 +77,8 @@ namespace host
 
         int block_size = 1024;
         int num_block = (res_host.size() + block_size - 1) / block_size;
-        device::satisfies<<<num_block, block_size>>>(cnf_dev.get(),
-                                                    flat_cnf.size(),
-                                                    res_dev.get(),
-                                                    nb_vars_);
+        device::satisfies<<<num_block, block_size>>>(
+            cnf_dev.get(), flat_cnf.size(), res_dev.get(), nb_vars_);
         utils::memcpy(res_host, res_dev.get());
 
         for (size_t pos = 0; pos < res_host.size(); pos++)
@@ -142,8 +139,8 @@ namespace device
 
     } // namespace
 
-    __global__ void satisfies(term* cnf, size_t cnf_size,
-                              char* is_solution, size_t nb_var)
+    __global__ void satisfies(term* cnf, size_t cnf_size, char* is_solution,
+                              size_t nb_var)
     {
         auto idx = x_idx();
         if (idx > pow(2, nb_var))
@@ -160,7 +157,7 @@ namespace device
             }
 
             bool clause_sat = false;
-            for (;cnf[i] != 0; i++)
+            for (; cnf[i] != 0; i++)
                 if (term_matches(cnf[i], sol))
                 {
                     clause_sat = true;
@@ -177,8 +174,7 @@ namespace device
         return;
     }
 
-    __device__ term* compute_solution(size_t index,
-                                      size_t nb_var)
+    __device__ term* compute_solution(size_t index, size_t nb_var)
     {
         term* sol = (term*)malloc(nb_var * sizeof(term));
 
@@ -190,4 +186,3 @@ namespace device
         return sol;
     }
 } // namespace device
-
