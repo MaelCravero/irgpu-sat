@@ -62,27 +62,58 @@ namespace host
         return ostr;
     }
 
+
     std::optional<solution> Cnf::solve() const
     {
         std::size_t max_val = std::pow(2, nb_vars_);
 
-        std::vector<int> vec;
-        for (int i = 0; i < 1024 * 1024; i++)
-            vec.push_back(i);
+        auto flat_cnf = flatten();
 
         /* int* dev_buffer = host::utils::malloc(vec); */
         /* utils::memcpy(dev_buffer, vec); */
 
-        auto dev_buffer = Box(utils::init_from(vec));
+        auto cnf_dev = Box(utils::init_from(flat_cnf));
+        auto res_host = std::vector<char>(max_val);
+        auto res_dev = Box(utils::malloc(res_host));
 
-        device::inc<<<1024, 1024>>>(dev_buffer);
+        int block_size = 1024;
+        int num_block = (res_host.size() + block_size - 1) / block_size;
+        device::satisfies<<<num_block, block_size>>>(cnf_dev.get(),
+                                                    flat_cnf.size(),
+                                                    res_dev.get(),
+                                                    nb_vars_);
+        utils::memcpy(res_host, res_dev.get());
 
-        utils::memcpy(vec, dev_buffer.get());
-
-        for (int i = 0; i < 20; i++)
-            std::cout << vec[i];
+        for (size_t pos = 0; pos < res_host.size(); pos++)
+        {
+            if (res_host[pos])
+            {
+                solution sol;
+                for (int i = 0; i < nb_vars_; i++)
+                {
+                    sol.push_back((pos >> i) % 2);
+                }
+                std::cout << sol;
+                return sol;
+            }
+        }
 
         return {};
+    }
+
+    std::vector<term> Cnf::flatten() const
+    {
+        std::vector<term> res;
+
+        for (const auto& clause : expr_)
+        {
+            for (const auto term : clause)
+                res.push_back(term);
+
+            res.push_back(0);
+        }
+
+        return res;
     }
 
     std::ostream& operator<<(std::ostream& o, const solution& s)
@@ -99,8 +130,64 @@ namespace host
 
 namespace device
 {
-    __global__ void inc(int* v)
+    namespace
     {
-        v[x_idx()]++;
+        __device__ bool term_matches(term t, const term* s)
+        {
+            auto sign = t > 0;
+            auto pos = abs(t) - 1;
+
+            return sign == (s[pos] != 0);
+        }
+
+    } // namespace
+
+    __global__ void satisfies(term* cnf, size_t cnf_size,
+                              char* is_solution, size_t nb_var)
+    {
+        auto idx = x_idx();
+        if (idx > pow(2, nb_var))
+            return;
+
+        auto sol = compute_solution(idx, nb_var);
+        size_t i = 0;
+        while (i < cnf_size)
+        {
+            if (cnf[i] == 0)
+            {
+                i++;
+                continue;
+            }
+
+            bool clause_sat = false;
+            for (;cnf[i] != 0; i++)
+                if (term_matches(cnf[i], sol))
+                {
+                    clause_sat = true;
+                }
+
+            if (clause_sat)
+                continue;
+
+            is_solution[idx] = 0;
+            return;
+        }
+
+        is_solution[idx] = 1;
+        return;
+    }
+
+    __device__ term* compute_solution(size_t index,
+                                      size_t nb_var)
+    {
+        term* sol = (term*)malloc(nb_var * sizeof(term));
+
+        for (int i = 0; i < nb_var; i++)
+        {
+            sol[i] = (index >> i) % 2;
+        }
+
+        return sol;
     }
 } // namespace device
+

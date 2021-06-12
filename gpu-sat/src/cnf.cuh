@@ -3,16 +3,15 @@
 #include <istream>
 #include <optional>
 #include <ostream>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <vector>
 
 using term = int;
 
 namespace host
 {
-    using clause = thrust::host_vector<term>;
-    using expression = thrust::host_vector<clause>;
-    using solution = thrust::host_vector<bool>;
+    using clause = std::vector<term>;
+    using expression = std::vector<clause>;
+    using solution = std::vector<bool>;
 
     class Cnf
     {
@@ -28,6 +27,8 @@ namespace host
 
         /// Print the CNF on \a ostr using MiniSat input format
         std::ostream& dump(std::ostream& ostr) const;
+
+        std::vector<term> flatten() const;
 
         std::optional<solution> solve() const;
 
@@ -45,9 +46,10 @@ namespace host
 
 namespace device
 {
-    using clause = thrust::device_vector<term>;
-    using expression = thrust::device_vector<clause>;
-    using solution = thrust::device_vector<bool>;
+    __global__ void satisfies(term* cnf, size_t cnf_size,
+                              char* is_solution, size_t nb_var);
 
-    __global__ void inc(int* v);
+    __device__ term* compute_solution(size_t index,
+                                      size_t nb_var);
+
 } // namespace device
