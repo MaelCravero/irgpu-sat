@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "box.cuh"
 #include "cnf.cuh"
 #include "utils.cuh"
 
@@ -72,11 +73,11 @@ namespace host
         /* int* dev_buffer = host::utils::malloc(vec); */
         /* utils::memcpy(dev_buffer, vec); */
 
-        auto dev_buffer = utils::init_from(vec);
+        auto dev_buffer = Box(utils::init_from(vec));
 
         device::inc<<<1024, 1024>>>(dev_buffer);
 
-        utils::memcpy(vec, dev_buffer);
+        utils::memcpy(vec, dev_buffer.get());
 
         for (int i = 0; i < 20; i++)
             std::cout << vec[i];
