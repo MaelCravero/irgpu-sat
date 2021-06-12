@@ -1,5 +1,3 @@
-set(OPT_FLAGS "-O3")
-
 set(SRC "src/main.cc" "src/cnf.cc")
 
 set(INCLUDE_DIR "src")
