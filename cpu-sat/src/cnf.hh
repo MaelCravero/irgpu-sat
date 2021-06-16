@@ -25,6 +25,7 @@ public:
     void append(const Cnf& other);
 
     bool unit_propagation();
+    bool unit_propagation(int term);
 
     /// Print the CNF on \a ostr using MiniSat input format
     std::ostream& dump(std::ostream& ostr) const;

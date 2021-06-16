@@ -44,6 +44,12 @@ void Cnf::append(const Cnf& other)
         expr_.push_back(clause);
 }
 
+bool Cnf::unit_propagation(int term)
+{
+    add_clause({term});
+    return unit_propagation();
+}
+
 bool Cnf::unit_propagation()
 {
     std::set<term> true_constants;
@@ -57,6 +63,8 @@ bool Cnf::unit_propagation()
             else
                 false_constants.insert(clause[0]);
         }
+
+
         return clause.size() == 1;
     });
 
@@ -73,9 +81,20 @@ bool Cnf::unit_propagation()
                 != clause.end();
         });
 
+    for (auto constant : false_constants)
+        utils::erase_if(expr_, [&](auto clause) {
+            return std::find(clause.begin(), clause.end(), constant)
+                != clause.end();
+        });
+
+    /* This should work but doesnt
     for (auto& clause : expr_)
         utils::erase_if(
-            clause, [&](auto elt) { return false_constants.contains(elt); });
+            clause, [&](term elt) {
+                return false_constants.contains(-elt) ||
+                    true_constants.contains(-elt);});
+
+    */
 
     return unit_propagation();
 }
@@ -157,11 +176,11 @@ std::optional<Cnf::solution> Cnf::solve(bool trace) const
 
 std::ostream& operator<<(std::ostream& o, const Cnf::solution& s)
 {
-    auto it = s.begin();
-    o << *it++;
+    int i = 0;
+    o << s[i++];
 
-    for (; it != s.end(); it++)
-        o << ", " << *it;
+    for (; i != s.size(); i++)
+        o << ", " << (i + 1) * (s[i] ? 1 : -1);
 
     return o << "\n";
 }

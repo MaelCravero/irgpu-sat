@@ -24,7 +24,10 @@ int main(int argc, char** argv)
 
     auto res = Dpll::solve(cnf);
 
-    std::cout << (res.has_value() ? "sat\n" : "unsat\n");
+    if (res.has_value())
+        std::cout << "sat\n" << *res << "\n";
+    else
+        std::cout << "unsat\n";
 
     return 0;
 }
