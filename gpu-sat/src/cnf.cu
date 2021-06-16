@@ -143,7 +143,7 @@ namespace device
                               size_t nb_var)
     {
         auto idx = x_idx();
-        if (idx > pow(2, nb_var))
+        if (idx >= pow(2, nb_var))
             return;
 
         auto sol = compute_solution(idx, nb_var);
