@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "cnf.hh"
+#include "dpll.hh"
 
 int main(int argc, char** argv)
 {
@@ -17,14 +18,13 @@ int main(int argc, char** argv)
     // std::cout << cnf.satisfies({true, true, true}) << std::endl;
     // std::cout << cnf.satisfies({false, true, true}) << std::endl;
 
-    cnf.unit_propagation();
+    /*     cnf.unit_propagation(); */
+    /*  */
+    /*     cnf.dump(std::cout); */
 
-    cnf.dump(std::cout);
-
-    auto res = cnf.solve();
+    auto res = Dpll::solve(cnf);
 
     std::cout << (res.has_value() ? "sat\n" : "unsat\n");
-
 
     return 0;
 }

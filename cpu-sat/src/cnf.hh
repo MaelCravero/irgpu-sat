@@ -5,6 +5,8 @@
 #include <ostream>
 #include <vector>
 
+class Dpll;
+
 class Cnf
 {
 public:
@@ -30,6 +32,8 @@ public:
     bool satisfies(const solution& s) const;
 
     std::optional<solution> solve(bool trace = false) const;
+
+    friend Dpll;
 
 private:
     /// Get the number of variables in the expression
