@@ -5,7 +5,6 @@
 #include <cmath>
 #include <iostream>
 #include <ranges>
-#include <set>
 #include <sstream>
 #include <string>
 
@@ -44,59 +43,21 @@ void Cnf::append(const Cnf& other)
         expr_.push_back(clause);
 }
 
-bool Cnf::unit_propagation(int term)
+bool Cnf::unit_propagation(term t)
 {
-    add_clause({term});
-    return unit_propagation();
-}
-
-bool Cnf::unit_propagation()
-{
-    std::set<term> true_constants;
-    std::set<term> false_constants;
+    for (auto clause : expr_)
+        if (clause.size() == 1
+            && std::find(clause.begin(), clause.end(), -t) != clause.end())
+            return true;
 
     utils::erase_if(expr_, [&](auto clause) {
-        if (clause.size() == 1)
-        {
-            if (clause[0] > 0)
-                true_constants.insert(clause[0]);
-            else
-                false_constants.insert(clause[0]);
-        }
-
-
-        return clause.size() == 1;
+        return std::find(clause.begin(), clause.end(), t) != clause.end();
     });
 
-    if (true_constants.empty() && false_constants.empty())
-        return true;
-
-    for (auto constant : true_constants)
-        if (false_constants.contains(-constant))
-            return false;
-
-    for (auto constant : true_constants)
-        utils::erase_if(expr_, [&](auto clause) {
-            return std::find(clause.begin(), clause.end(), constant)
-                != clause.end();
-        });
-
-    for (auto constant : false_constants)
-        utils::erase_if(expr_, [&](auto clause) {
-            return std::find(clause.begin(), clause.end(), constant)
-                != clause.end();
-        });
-
-    /* This should work but doesnt
     for (auto& clause : expr_)
-        utils::erase_if(
-            clause, [&](term elt) {
-                return false_constants.contains(-elt) ||
-                    true_constants.contains(-elt);});
+        utils::erase_if(clause, [&](term elt) { return elt == -t; });
 
-    */
-
-    return unit_propagation();
+    return false;
 }
 
 std::ostream& Cnf::dump(std::ostream& ostr) const
@@ -177,7 +138,7 @@ std::optional<Cnf::solution> Cnf::solve(bool trace) const
 std::ostream& operator<<(std::ostream& o, const Cnf::solution& s)
 {
     int i = 0;
-    o << s[i++];
+    o << (s[i++] ? 1 : -1);
 
     for (; i != s.size(); i++)
         o << ", " << (i + 1) * (s[i] ? 1 : -1);

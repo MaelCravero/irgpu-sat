@@ -3,6 +3,7 @@
 #include <istream>
 #include <optional>
 #include <ostream>
+#include <set>
 #include <vector>
 
 class Dpll;
@@ -24,8 +25,7 @@ public:
     /// Append a CNF
     void append(const Cnf& other);
 
-    bool unit_propagation();
-    bool unit_propagation(int term);
+    bool unit_propagation(term t);
 
     /// Print the CNF on \a ostr using MiniSat input format
     std::ostream& dump(std::ostream& ostr) const;
