@@ -27,6 +27,8 @@ public:
 
     bool unit_propagation(term t);
 
+    bool unit_propagation(std::set<term> terms);
+
     /// Print the CNF on \a ostr using MiniSat input format
     std::ostream& dump(std::ostream& ostr) const;
 

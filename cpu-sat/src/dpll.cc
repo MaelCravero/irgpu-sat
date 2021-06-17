@@ -95,8 +95,13 @@ std::optional<Cnf::solution> Dpll::solve(const Cnf& cnf)
         auto local = cnf;
         auto conflict = false;
 
-        for (auto term : assigned)
-            conflict = conflict || local.unit_propagation(term);
+        if (!assigned.empty())
+        {
+            conflict = local.unit_propagation(
+                std::set<Cnf::term>{assigned.begin(), assigned.end() - 1});
+
+            conflict = conflict || local.unit_propagation(assigned.back());
+        }
 
         if (conflict)
         {

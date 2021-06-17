@@ -43,11 +43,31 @@ void Cnf::append(const Cnf& other)
         expr_.push_back(clause);
 }
 
+bool Cnf::unit_propagation(std::set<term> terms)
+{
+    for (auto clause : expr_)
+        if (clause.size() == 1 && terms.contains(-clause[0]))
+            return true;
+
+    utils::erase_if(expr_, [&](auto clause) {
+        for (auto t : clause)
+        {
+            if (terms.contains(t))
+                return true;
+        }
+        return false;
+    });
+
+    for (auto& clause : expr_)
+        utils::erase_if(clause, [&](term elt) { return terms.contains(-elt);});
+
+    return false;
+}
+
 bool Cnf::unit_propagation(term t)
 {
     for (auto clause : expr_)
-        if (clause.size() == 1
-            && std::find(clause.begin(), clause.end(), -t) != clause.end())
+        if (clause.size() == 1 && clause[0] == -t)
             return true;
 
     utils::erase_if(expr_, [&](auto clause) {
