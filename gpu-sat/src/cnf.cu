@@ -113,6 +113,25 @@ namespace host
         return res;
     }
 
+    term_val* Cnf::to_matrix() const
+    {
+        //TODO:do not handle oppose it terms
+
+        auto matrix = new char[nb_vars_ * expr_.size()]{}; // set to 0 ?
+        for (int i = 0; i < expr_.size(); i++)
+        {
+            for (auto t : expr_[i])
+            {
+                if (t > 0)
+                    matrix[i * nb_vars_ + std::abs(t) - 1] = 1;
+                else
+                    matrix[i * nb_vars_ + std::abs(t) - 1] = -1;
+            }
+        }
+
+        return matrix;
+    }
+
     std::ostream& operator<<(std::ostream& o, const solution& s)
     {
         auto it = s.begin();

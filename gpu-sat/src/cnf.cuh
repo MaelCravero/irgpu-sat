@@ -6,6 +6,7 @@
 #include <vector>
 
 using term = int;
+using term_val = char;
 
 namespace host
 {
@@ -29,6 +30,8 @@ namespace host
         std::ostream& dump(std::ostream& ostr) const;
 
         std::vector<term> flatten() const;
+
+        term_val* to_matrix() const;
 
         std::optional<solution> solve() const;
 
