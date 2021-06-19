@@ -12,7 +12,7 @@ namespace host
 {
     using clause = std::vector<term>;
     using expression = std::vector<clause>;
-    using solution = std::vector<bool>;
+    using solution = std::vector<int>;
 
     class Cnf
     {
@@ -34,6 +34,9 @@ namespace host
         term_val* to_matrix() const;
 
         std::optional<solution> solve() const;
+
+        unsigned nb_var_get() const;
+        unsigned nb_clause_get() const;
 
     private:
         /// Get the number of variables in the expression

@@ -4,8 +4,7 @@
 
 namespace host
 {
-    void dpll_solve(term_val* cnf_matrix, size_t nb_var, size_t nb_clause,
-                    bool* solution);
+    std::optional<solution> dpll_solve(term_val* cnf_matrix, size_t nb_var, size_t nb_clause);
 
 }
 

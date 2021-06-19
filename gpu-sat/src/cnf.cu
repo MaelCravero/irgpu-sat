@@ -132,6 +132,16 @@ namespace host
         return matrix;
     }
 
+    unsigned Cnf::nb_var_get() const
+    {
+        return nb_vars_;
+    }
+
+    unsigned Cnf::nb_clause_get() const
+    {
+        return expr_.size();
+    }
+
     std::ostream& operator<<(std::ostream& o, const solution& s)
     {
         auto it = s.begin();

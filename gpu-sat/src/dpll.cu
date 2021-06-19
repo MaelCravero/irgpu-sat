@@ -1,5 +1,6 @@
 #include <optional>
 #include <vector>
+#include <iostream>
 
 #include "cnf.cuh"
 #include "dpll.cuh"
@@ -9,18 +10,16 @@ namespace host
 {
     namespace
     {
-        void assign_decision_litteral(std::vector<term_val>& constants,
-                                      size_t pos)
-        {
-            constants[pos] = 1;
-        }
-
         void backjump(std::vector<term_val>& constants, size_t& pos)
         {
-            while (pos && constants[pos] < 0)
+            while (pos >= 1 && constants[pos - 1] > 0)
+            {
+                constants[pos - 1] = 0;
                 pos--;
+            }
 
-            constants[pos] *= -1;
+            if (pos)
+                constants[pos - 1] *= -1;
         }
 
         solution calculate_solution(std::vector<term_val>& constants)
@@ -46,8 +45,11 @@ namespace host
         int nb_blocks = (nb_clause / 1024) + 1;
 
         size_t constant_pos = 0;
-        for (;;)
-        {
+        for (;;) {
+            for (auto tv : constants)
+                std::cout << (int)tv << " ";
+            std::cout << "\n";
+
             term_val* local_cnf;
             cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
             cudaMemcpy(local_cnf, cnf_matrix,
@@ -58,34 +60,50 @@ namespace host
             bool* mask;
             cudaMalloc(&mask, clause_size);
 
+            auto cur_constant = 0;
+            if (constant_pos)
+            {
+                cur_constant = constants[constant_pos - 1];
+                constants[constant_pos - 1] = 0;
+            }
+
             auto dev_constants = utils::init_from(constants);
+
+            if (constant_pos)
+            {
+                constants[constant_pos - 1] = cur_constant;
+            }
 
             device::simplify<<<nb_blocks, 1024>>>(local_cnf, nb_var, nb_clause,
                                                   dev_constants, mask);
 
             cudaFree(dev_constants);
-
-            bool* results;
-            cudaMalloc(&results, nb_clause * sizeof(bool));
-
-            device::check_conflict<<<nb_blocks, 1024>>>(
-                local_cnf, nb_var, nb_clause, constant_pos,
-                constants[constant_pos], results, mask);
-
-            bool* host_res = (bool*)malloc(clause_size);
-            cudaMemcpy(host_res, results, clause_size, cudaMemcpyDeviceToHost);
-
             bool conflict = false;
-            for (auto i = 0; i < nb_clause && !conflict; i++)
-                if (host_res[i])
-                    conflict = true;
+
+            if (constant_pos)
+            {
+                bool* results;
+                cudaMalloc(&results, nb_clause * sizeof(bool));
+
+                device::check_conflict<<<nb_blocks, 1024>>>(
+                    local_cnf, nb_var, nb_clause, constant_pos - 1,
+                    constants[constant_pos - 1], results, mask);
+
+                bool* host_res = (bool*)malloc(clause_size);
+                cudaMemcpy(host_res, results, clause_size, cudaMemcpyDeviceToHost);
+
+                for (auto i = 0; i < nb_clause && !conflict; i++)
+                    if (host_res[i])
+                        conflict = true;
+
+                free(host_res);
+                cudaFree(results);
+            }
 
             cudaFree(local_cnf);
             cudaFree(mask);
-            cudaFree(results);
 
-            free(host_res);
-
+            std::cout << std::boolalpha << conflict << "\n";
             if (conflict)
             {
                 backjump(constants, constant_pos);
@@ -93,9 +111,9 @@ namespace host
                 if (!constant_pos)
                     return {};
             }
-            else if (constant_pos <= nb_var)
+            else if (constant_pos < nb_var)
             {
-                assign_decision_litteral(constants, constant_pos);
+                constants[constant_pos++] = -1;
             }
             else
                 break;
@@ -114,8 +132,14 @@ namespace device
     {
         auto x = utils::x_idx();
 
-        if (x >= nb_clause || mask[x])
+        if (x >= nb_clause)
             return;
+
+        if (mask[x])
+        {
+            results[x] = false;
+            return;
+        }
 
         bool conflict = cnf_matrix[x + constant_pos] == -constant_sign;
 
@@ -135,7 +159,7 @@ namespace device
                 }
         }
 
-        if (vars_in_clause > 1)
+        if (vars_in_clause == 1)
             results[x] = true;
     }
 
@@ -144,8 +168,10 @@ namespace device
     {
         auto x = utils::x_idx();
 
-        if (x >= nb_clause || mask[x])
+        if (x >= nb_clause)
             return;
+
+        mask[x] = false;
 
         for (auto i = 0; i < nb_var; i++)
         {
