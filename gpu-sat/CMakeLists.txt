@@ -1,4 +1,4 @@
-set(SRC "src/main.cu" "src/cnf.cu")
+set(SRC "src/main.cu" "src/cnf.cu" "src/dpll.cu")
 
 set(INCLUDE_DIR "src")
 
