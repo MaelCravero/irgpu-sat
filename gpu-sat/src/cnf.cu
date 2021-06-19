@@ -115,7 +115,7 @@ namespace host
 
     term_val* Cnf::to_matrix() const
     {
-        //TODO:do not handle oppose it terms
+        // TODO:do not handle oppose it terms
 
         auto matrix = new char[nb_vars_ * expr_.size()]{}; // set to 0 ?
         for (int i = 0; i < expr_.size(); i++)
@@ -161,7 +161,7 @@ namespace device
     __global__ void satisfies(term* cnf, size_t cnf_size, char* is_solution,
                               size_t nb_var)
     {
-        auto idx = x_idx();
+        auto idx = utils::x_idx();
         if (idx >= pow(2, nb_var))
             return;
 

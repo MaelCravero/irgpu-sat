@@ -52,10 +52,10 @@ namespace host::utils
 
 } // namespace host::utils
 
-namespace device
+namespace device::utils
 {
-    __device__ size_t x_idx()
+    inline __device__ size_t x_idx()
     {
         return blockDim.x * blockIdx.x + threadIdx.x;
     }
-} // namespace device
+} // namespace device::utils
