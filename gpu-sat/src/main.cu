@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     std::string path = argv[1];
 
     auto cnf = Cnf(std::ifstream(path));
-    cnf.dump(std::cout);
+    /* cnf.dump(std::cout); */
 
     auto cnf_matrix = cnf.to_matrix();
     auto nb_var = cnf.nb_var_get();

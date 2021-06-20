@@ -1,6 +1,6 @@
+#include <iostream>
 #include <optional>
 #include <vector>
-#include <iostream>
 
 #include "cnf.cuh"
 #include "dpll.cuh"
@@ -12,7 +12,7 @@ namespace host
     {
         void backjump(std::vector<term_val>& constants, size_t& pos)
         {
-            while (pos >= 1 && constants[pos - 1] > 0)
+            while (pos >= 1 && constants[pos - 1] < 0)
             {
                 constants[pos - 1] = 0;
                 pos--;
@@ -28,7 +28,7 @@ namespace host
 
             int i = 1;
             for (auto sign : constants)
-                sol.emplace_back(i * sign);
+                sol.emplace_back(i++ * sign);
 
             return sol;
         }
@@ -45,12 +45,15 @@ namespace host
         int nb_blocks = (nb_clause / 1024) + 1;
 
         size_t constant_pos = 0;
-        for (;;) {
-
-            std::cout << "\n" << "curent constants:\n";
+        for (;;)
+        {
+#ifdef DEBUG
+            std::cout << "\n"
+                      << "curent constants:\n";
             for (auto tv : constants)
                 std::cout << (int)tv << " ";
             std::cout << "\n";
+#endif
 
             term_val* local_cnf;
             cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
@@ -79,23 +82,31 @@ namespace host
             device::simplify<<<nb_blocks, 1024>>>(local_cnf, nb_var, nb_clause,
                                                   dev_constants, mask);
 
-            term_val* host_local_cnf = (term_val*)malloc(nb_clause * sizeof(term_val) * nb_var);
-            cudaMemcpy(host_local_cnf, local_cnf, nb_clause * sizeof(term_val) * nb_var, cudaMemcpyDeviceToHost);
+#ifdef DEBUG
+            term_val* host_local_cnf =
+                (term_val*)malloc(nb_clause * sizeof(term_val) * nb_var);
+            cudaMemcpy(host_local_cnf, local_cnf,
+                       nb_clause * sizeof(term_val) * nb_var,
+                       cudaMemcpyDeviceToHost);
+#endif
 
             bool* host_mask = (bool*)malloc(clause_size);
             cudaMemcpy(host_mask, mask, clause_size, cudaMemcpyDeviceToHost);
 
+#ifdef DEBUG
             std::cout << "cnf after simplify";
             for (int i = 0; i < nb_var * nb_clause; i++)
             {
                 if (i % nb_var == 0)
-                    std::cout << "\nMask = " << std::boolalpha << host_mask[i / nb_var] << "   ";
+                    std::cout << "\nMask = " << std::boolalpha
+                              << host_mask[i / nb_var] << "   ";
                 std::cout << (int)host_local_cnf[i] << " ";
             }
             std::cout << "\n";
 
             free(host_local_cnf);
             free(host_mask);
+#endif
 
             cudaFree(dev_constants);
             bool conflict = false;
@@ -110,13 +121,22 @@ namespace host
                     constants[constant_pos - 1], results, mask);
 
                 bool* host_res = (bool*)malloc(clause_size);
-                cudaMemcpy(host_res, results, clause_size, cudaMemcpyDeviceToHost);
+                cudaMemcpy(host_res, results, clause_size,
+                           cudaMemcpyDeviceToHost);
 
                 for (auto i = 0; i < nb_clause; i++)
                 {
-                    std::cout << "conflict: " << std::boolalpha << host_res[i] << "\n";
+#ifdef DEBUG
+                    std::cout << "conflict: " << std::boolalpha << host_res[i]
+                              << "\n";
+#endif
                     if (host_res[i])
+                    {
                         conflict = true;
+#ifndef DEBUG
+                        break;
+#endif
+                    }
                 }
 
                 free(host_res);
@@ -135,7 +155,7 @@ namespace host
             }
             else if (constant_pos < nb_var)
             {
-                constants[constant_pos++] = -1;
+                constants[constant_pos++] = 1;
             }
             else
                 break;
