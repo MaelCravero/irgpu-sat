@@ -46,6 +46,8 @@ namespace host
 
         size_t constant_pos = 0;
         for (;;) {
+
+            std::cout << "\n" << "curent constants:\n";
             for (auto tv : constants)
                 std::cout << (int)tv << " ";
             std::cout << "\n";
@@ -77,6 +79,21 @@ namespace host
             device::simplify<<<nb_blocks, 1024>>>(local_cnf, nb_var, nb_clause,
                                                   dev_constants, mask);
 
+            term_val* host_local_cnf = (term_val*)malloc(nb_clause * sizeof(term_val) * nb_var);
+            cudaMemcpy(host_local_cnf, local_cnf, nb_clause * sizeof(term_val) * nb_var, cudaMemcpyDeviceToHost);
+
+            bool* host_mask = (bool*)malloc(clause_size);
+            cudaMemcpy(host_mask, mask, clause_size, cudaMemcpyDeviceToHost);
+
+            std::cout << "cnf after simplify";
+            for (int i = 0; i < nb_var * nb_clause; i++)
+            {
+                if (i % nb_var == 0)
+                    std::cout << "\nMask = " << std::boolalpha << host_mask[i / nb_var] << "   ";
+                std::cout << (int)host_local_cnf[i] << " ";
+            }
+            std::cout << "\n";
+
             cudaFree(dev_constants);
             bool conflict = false;
 
@@ -92,9 +109,12 @@ namespace host
                 bool* host_res = (bool*)malloc(clause_size);
                 cudaMemcpy(host_res, results, clause_size, cudaMemcpyDeviceToHost);
 
-                for (auto i = 0; i < nb_clause && !conflict; i++)
+                for (auto i = 0; i < nb_clause; i++)
+                {
+                    std::cout << "conflict: " << std::boolalpha << host_res[i] << "\n";
                     if (host_res[i])
                         conflict = true;
+                }
 
                 free(host_res);
                 cudaFree(results);
@@ -103,7 +123,6 @@ namespace host
             cudaFree(local_cnf);
             cudaFree(mask);
 
-            std::cout << std::boolalpha << conflict << "\n";
             if (conflict)
             {
                 backjump(constants, constant_pos);
@@ -135,11 +154,9 @@ namespace device
         if (x >= nb_clause)
             return;
 
+        results[x] = false;
         if (mask[x])
-        {
-            results[x] = false;
             return;
-        }
 
         bool conflict = cnf_matrix[x + constant_pos] == -constant_sign;
 
@@ -147,7 +164,7 @@ namespace device
             return;
 
         int vars_in_clause = 0;
-        for (auto i = x * nb_var; i < (x + 1); i++)
+        for (auto i = x * nb_var; i < (x + 1) * nb_var; i++)
         {
             if (cnf_matrix[i])
                 if (!vars_in_clause)
