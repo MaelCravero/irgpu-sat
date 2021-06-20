@@ -44,6 +44,11 @@ namespace host
 
         int nb_blocks = (nb_clause / 1024) + 1;
 
+        term_val* dev_cnf;
+        cudaMalloc(&dev_cnf, nb_var * nb_clause * sizeof(term_val));
+        cudaMemcpy(dev_cnf, cnf_matrix, nb_var * nb_clause * sizeof(term_val),
+                   cudaMemcpyHostToDevice); // cnf seems to be on host
+
         term_val* local_cnf;
         cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
 
@@ -70,9 +75,9 @@ namespace host
             std::cout << "\n";
 #endif
 
-            cudaMemcpy(local_cnf, cnf_matrix,
+            cudaMemcpy(local_cnf, dev_cnf,
                        nb_var * nb_clause * sizeof(term_val),
-                       cudaMemcpyHostToDevice); // cnf seems to be on host
+                       cudaMemcpyDeviceToDevice); // cnf seems to be on host
 
             auto cur_constant = 0;
             if (constant_pos)
@@ -149,6 +154,7 @@ namespace host
                 if (!constant_pos)
                 {
                     free(host_res);
+                    cudaFree(dev_cnf);
                     cudaFree(results);
                     cudaFree(local_cnf);
                     cudaFree(mask);
@@ -166,6 +172,7 @@ namespace host
         }
 
         free(host_res);
+        cudaFree(dev_cnf);
         cudaFree(results);
         cudaFree(local_cnf);
         cudaFree(mask);
