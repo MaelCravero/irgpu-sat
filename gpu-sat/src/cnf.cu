@@ -113,6 +113,17 @@ namespace host
         return res;
     }
 
+    void Cnf::remove_trivial_clauses()
+    {
+        for (term term = 0; term < nb_vars_; term++)
+            for (auto it = expr_.begin(); it != expr_.end(); it++)
+            {
+                if (std::find(it->begin(), it->end(), term) != it->end()
+                    && std::find(it->begin(), it->end(), -term) != it->end())
+                    it = expr_.erase(it);
+            }
+    }
+
     term_val* Cnf::to_matrix() const
     {
         // TODO:do not handle oppose it terms

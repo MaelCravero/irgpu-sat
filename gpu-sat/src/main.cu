@@ -13,13 +13,8 @@ int main(int argc, char** argv)
     std::string path = argv[1];
 
     auto cnf = Cnf(std::ifstream(path));
-    /* cnf.dump(std::cout); */
 
-    auto cnf_matrix = cnf.to_matrix();
-    auto nb_var = cnf.nb_var_get();
-    auto nb_clause = cnf.nb_clause_get();
-
-    auto solution = dpll_solve(cnf_matrix, nb_var, nb_clause);
+    auto solution = dpll_solve(cnf);
 
     if (solution.has_value())
         std::cout << "sat\n" << *solution << "\n";

@@ -31,6 +31,7 @@ namespace host
 
         std::vector<term> flatten() const;
 
+        void remove_trivial_clauses();
         term_val* to_matrix() const;
 
         std::optional<solution> solve() const;
@@ -52,10 +53,9 @@ namespace host
 
 namespace device
 {
-    __global__ void satisfies(term* cnf, size_t cnf_size,
-                              char* is_solution, size_t nb_var);
+    __global__ void satisfies(term* cnf, size_t cnf_size, char* is_solution,
+                              size_t nb_var);
 
-    __device__ term* compute_solution(size_t index,
-                                      size_t nb_var);
+    __device__ term* compute_solution(size_t index, size_t nb_var);
 
 } // namespace device

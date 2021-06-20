@@ -10,16 +10,16 @@ namespace host
 {
     namespace
     {
-        void backjump(std::vector<term_val>& constants, size_t& pos)
+        void backjump(std::vector<term_val>& constants, size_t& size)
         {
-            while (pos >= 1 && constants[pos - 1] < 0)
+            while (size >= 1 && constants[size - 1] < 0)
             {
-                constants[pos - 1] = 0;
-                pos--;
+                constants[size - 1] = 0;
+                size--;
             }
 
-            if (pos)
-                constants[pos - 1] *= -1;
+            if (size)
+                constants[size - 1] *= -1;
         }
 
         solution calculate_solution(std::vector<term_val>& constants)
@@ -35,73 +35,82 @@ namespace host
 
     } // namespace
 
-    std::optional<solution> dpll_solve(term_val* cnf_matrix, size_t nb_var,
-                                       size_t nb_clause)
+    std::optional<solution> dpll_solve(Cnf cnf)
     {
-        std::vector<term_val> constants(nb_var);
+        cnf.remove_trivial_clauses();
+
+        auto cnf_matrix = cnf.to_matrix();
+        auto nb_var = cnf.nb_var_get();
+        auto nb_clause = cnf.nb_clause_get();
 
         int nb_blocks = (nb_clause / 1024) + 1;
 
+        // This is the result vector which contains assigned variables.
+        std::vector<term_val> constants(nb_var);
+
+        // We copy the CNF on the device to lessen copy costs.
         term_val* dev_cnf = utils::malloc<term_val>(nb_var * nb_clause);
         utils::memcpy(dev_cnf, cnf_matrix,
                       nb_var * nb_clause * sizeof(term_val),
                       cudaMemcpyHostToDevice);
 
+        // This is the CNF used in the loop, which is recalculated.
         term_val* local_cnf = utils::malloc<term_val>(nb_var * nb_clause);
 
         size_t clause_size = nb_clause * sizeof(bool);
+
+        // mask is used to determine is a clause is pruned.
         bool* mask = utils::malloc<bool>(nb_clause);
 
+        // results is used to determine is a clause has a conflict.
         bool* results = utils::malloc<bool>(nb_clause);
 
+        // We cannot we used a std::vector<bool> due to bitset specialization
+        // which disables the .data() method...
         bool* host_res = (bool*)malloc(clause_size);
 
+        // Intermediary vector for passing constants to the device.
         term_val* dev_constants = utils::malloc<term_val>(nb_var);
 
-        size_t constant_pos = 0;
+        size_t constant_size = 0;
 
         // Set the first constant to true
-        constants[constant_pos++] = 1;
+        constants[constant_size++] = 1;
 
         for (;;)
         {
             utils::memcpy(local_cnf, dev_cnf,
-                       nb_var * nb_clause * sizeof(term_val),
-                       cudaMemcpyDeviceToDevice);
+                          nb_var * nb_clause * sizeof(term_val),
+                          cudaMemcpyDeviceToDevice);
 
-            auto cur_constant = constants[constant_pos - 1];
-            constants[constant_pos - 1] = 0;
+            // Backup last assigned constant
+            auto cur_constant = constants[constant_size - 1];
+            constants[constant_size - 1] = 0;
 
             utils::memcpy(dev_constants, constants);
 
-            constants[constant_pos - 1] = cur_constant;
+            constants[constant_size - 1] = cur_constant;
 
             device::simplify<<<nb_blocks, 1024>>>(local_cnf, nb_var, nb_clause,
                                                   dev_constants, mask);
 
-            bool conflict = false;
-
             device::check_conflict<<<nb_blocks, 1024>>>(
-                local_cnf, nb_var, nb_clause, constant_pos - 1,
-                constants[constant_pos - 1], results, mask);
+                local_cnf, nb_var, nb_clause, constant_size - 1,
+                constants[constant_size - 1], results, mask);
 
             utils::memcpy(host_res, results, clause_size,
-                       cudaMemcpyDeviceToHost);
+                          cudaMemcpyDeviceToHost);
 
-            for (auto i = 0; i < nb_clause; i++)
-            {
+            bool conflict = false;
+            for (auto i = 0; i < nb_clause && !conflict; i++)
                 if (host_res[i])
-                {
                     conflict = true;
-                    break;
-                }
-            }
 
             if (conflict)
             {
-                backjump(constants, constant_pos);
+                backjump(constants, constant_size);
 
-                if (!constant_pos)
+                if (!constant_size)
                 {
                     free(host_res);
                     cudaFree(dev_cnf);
@@ -113,9 +122,9 @@ namespace host
                     return {};
                 }
             }
-            else if (constant_pos < nb_var)
+            else if (constant_size < nb_var)
             {
-                constants[constant_pos++] = 1;
+                constants[constant_size++] = 1;
             }
             else
                 break;
@@ -130,6 +139,7 @@ namespace host
 
         return {calculate_solution(constants)};
     }
+
 } // namespace host
 
 namespace device
@@ -145,13 +155,19 @@ namespace device
             return;
 
         results[x] = false;
+
         if (mask[x])
             return;
 
+        // There can only be a conflict if the clause contains the negation of
+        // the term.
         bool conflict = cnf_matrix[x * nb_var + constant_pos] == -constant_sign;
 
         if (!conflict)
             return;
+
+        // If there is a possible conflict, we have to check if the clause is
+        // unitary. If it is, there is indeed a conflict.
 
         int vars_in_clause = 0;
         for (auto i = x * nb_var; i < (x + 1) * nb_var; i++)
@@ -186,9 +202,11 @@ namespace device
         {
             auto pos = x * nb_var + i;
 
+            // If the term is the negation, we can remove it from the clause.
             if (cnf_matrix[pos] && cnf_matrix[pos] == -constants[i])
-                cnf_matrix[pos] = 0; // The term can be removed
+                cnf_matrix[pos] = 0;
 
+            // If the term is the same, we can remove the whole clause.
             else if (cnf_matrix[pos] && cnf_matrix[pos] == constants[i])
             {
                 mask[x] = true; // The clause is true
