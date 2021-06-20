@@ -2,9 +2,7 @@
 
 #include <algorithm>
 #include <bitset>
-#include <cmath>
 #include <iostream>
-#include <ranges>
 #include <sstream>
 #include <string>
 
@@ -133,27 +131,6 @@ bool Cnf::satisfies(const solution& s) const
     return true;
 }
 
-std::optional<Cnf::solution> Cnf::solve(bool trace) const
-{
-    using std::views::iota;
-
-    for (auto n : iota(0u, std::pow(2, nb_vars_)))
-    {
-        solution s;
-        for (auto i : iota(0u, nb_vars_))
-        {
-            s.push_back((n >> i) % 2);
-        }
-
-        if (trace)
-            std::cerr << "testing " << s << std::endl;
-
-        if (satisfies(s))
-            return s;
-    }
-
-    return {};
-}
 
 std::ostream& operator<<(std::ostream& o, const Cnf::solution& s)
 {

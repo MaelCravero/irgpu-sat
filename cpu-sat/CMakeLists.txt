@@ -1,4 +1,4 @@
-set(SRC "src/main.cc" "src/cnf.cc" "src/dpll.cc")
+set(SRC "src/main.cc" "src/cnf.cc" "src/solver.cc")
 
 set(INCLUDE_DIR "src")
 

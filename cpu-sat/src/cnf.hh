@@ -6,7 +6,7 @@
 #include <set>
 #include <vector>
 
-class Dpll;
+struct Solver;
 
 class Cnf
 {
@@ -34,9 +34,7 @@ public:
 
     bool satisfies(const solution& s) const;
 
-    std::optional<solution> solve(bool trace = false) const;
-
-    friend Dpll;
+    friend Solver;
 
 private:
     /// Get the number of variables in the expression
