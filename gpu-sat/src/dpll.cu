@@ -44,6 +44,21 @@ namespace host
 
         int nb_blocks = (nb_clause / 1024) + 1;
 
+        term_val* local_cnf;
+        cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
+
+        size_t clause_size = nb_clause * sizeof(bool);
+        bool* mask;
+        cudaMalloc(&mask, clause_size);
+
+        bool* results;
+        cudaMalloc(&results, nb_clause * sizeof(bool));
+
+        bool* host_res = (bool*)malloc(clause_size);
+
+        term_val* dev_constants;
+        cudaMalloc(&dev_constants, nb_var * sizeof(term_val));
+
         size_t constant_pos = 0;
         for (;;)
         {
@@ -55,15 +70,9 @@ namespace host
             std::cout << "\n";
 #endif
 
-            term_val* local_cnf;
-            cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
             cudaMemcpy(local_cnf, cnf_matrix,
                        nb_var * nb_clause * sizeof(term_val),
                        cudaMemcpyHostToDevice); // cnf seems to be on host
-
-            size_t clause_size = nb_clause * sizeof(bool);
-            bool* mask;
-            cudaMalloc(&mask, clause_size);
 
             auto cur_constant = 0;
             if (constant_pos)
@@ -72,7 +81,7 @@ namespace host
                 constants[constant_pos - 1] = 0;
             }
 
-            auto dev_constants = utils::init_from(constants);
+            utils::memcpy(dev_constants, constants);
 
             if (constant_pos)
             {
@@ -88,12 +97,10 @@ namespace host
             cudaMemcpy(host_local_cnf, local_cnf,
                        nb_clause * sizeof(term_val) * nb_var,
                        cudaMemcpyDeviceToHost);
-#endif
 
             bool* host_mask = (bool*)malloc(clause_size);
             cudaMemcpy(host_mask, mask, clause_size, cudaMemcpyDeviceToHost);
 
-#ifdef DEBUG
             std::cout << "cnf after simplify";
             for (int i = 0; i < nb_var * nb_clause; i++)
             {
@@ -108,19 +115,14 @@ namespace host
             free(host_mask);
 #endif
 
-            cudaFree(dev_constants);
             bool conflict = false;
 
             if (constant_pos)
             {
-                bool* results;
-                cudaMalloc(&results, nb_clause * sizeof(bool));
-
                 device::check_conflict<<<nb_blocks, 1024>>>(
                     local_cnf, nb_var, nb_clause, constant_pos - 1,
                     constants[constant_pos - 1], results, mask);
 
-                bool* host_res = (bool*)malloc(clause_size);
                 cudaMemcpy(host_res, results, clause_size,
                            cudaMemcpyDeviceToHost);
 
@@ -138,20 +140,22 @@ namespace host
 #endif
                     }
                 }
-
-                free(host_res);
-                cudaFree(results);
             }
-
-            cudaFree(local_cnf);
-            cudaFree(mask);
 
             if (conflict)
             {
                 backjump(constants, constant_pos);
 
                 if (!constant_pos)
+                {
+                    free(host_res);
+                    cudaFree(results);
+                    cudaFree(local_cnf);
+                    cudaFree(mask);
+                    cudaFree(dev_constants);
+
                     return {};
+                }
             }
             else if (constant_pos < nb_var)
             {
@@ -160,6 +164,12 @@ namespace host
             else
                 break;
         }
+
+        free(host_res);
+        cudaFree(results);
+        cudaFree(local_cnf);
+        cudaFree(mask);
+        cudaFree(dev_constants);
 
         return {calculate_solution(constants)};
     }
