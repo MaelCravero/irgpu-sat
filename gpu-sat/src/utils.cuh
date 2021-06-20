@@ -34,9 +34,32 @@ namespace host::utils
     }
 
     template <typename T>
+    T* mallocPitch(size_t* pitch, size_t width, size_t height)
+    {
+        T* res;
+
+        auto rc = cudaMallocPitch(&res, pitch, width * sizeof(T), height);
+
+        if (rc)
+            throw std::bad_alloc();
+
+        return res;
+    }
+
+    template <typename T>
     void memcpy(T* dst, const T* src, size_t size, cudaMemcpyKind kind)
     {
         auto rc = cudaMemcpy(dst, src, size, kind);
+
+        if (rc)
+            throw std::domain_error("unable to memcpy");
+    }
+
+    template <typename T>
+    void memcpy2D(T* dst, size_t d_pitch, const T* src, size_t s_pitch,
+                  size_t width, size_t height, cudaMemcpyKind kind)
+    {
+        auto rc = cudaMemcpy2D(dst, d_pitch, src, s_pitch, width, height, kind);
 
         if (rc)
             throw std::domain_error("unable to memcpy");
