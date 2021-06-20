@@ -94,4 +94,9 @@ namespace device::utils
     {
         return blockDim.x * blockIdx.x + threadIdx.x;
     }
+
+    inline __device__ size_t y_idx()
+    {
+        return blockDim.y * blockIdx.y + threadIdx.y;
+    }
 } // namespace device::utils

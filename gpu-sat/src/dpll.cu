@@ -46,6 +46,10 @@ namespace host
 
         int nb_blocks = (nb_clause / 1024) + 1;
 
+        int bsize = 32;
+        dim3 dimGrid(nb_clause / bsize + 1, nb_var / bsize + 1);
+        dim3 dimBlock(bsize, bsize);
+
         // This is the result vector which contains assigned variables.
         std::vector<term_val> constants(nb_var);
 
@@ -102,6 +106,10 @@ namespace host
             device::simplify<<<nb_blocks, 1024>>>(local_cnf, local_cnf_pitch,
                                                   nb_var, nb_clause,
                                                   dev_constants, mask);
+
+            device::remove_terms<<<dimGrid, dimBlock>>>(
+                local_cnf, local_cnf_pitch, nb_var, nb_clause, dev_constants,
+                mask);
 
             device::check_conflict<<<nb_blocks, 1024>>>(
                 local_cnf, local_cnf_pitch, nb_var, nb_clause,
@@ -200,17 +208,33 @@ namespace device
         {
             auto pos = x * pitch + i;
 
-            // If the term is the negation, we can remove it from the clause.
-            if (cnf_matrix[pos] && cnf_matrix[pos] == -constants[i])
-                cnf_matrix[pos] = 0;
-
             // If the term is the same, we can remove the whole clause.
-            else if (cnf_matrix[pos] && cnf_matrix[pos] == constants[i])
+            if (cnf_matrix[pos] && cnf_matrix[pos] == constants[i])
             {
                 mask[x] = true; // The clause is true
                 return;
             }
         }
+    }
+
+    __global__ void remove_terms(term_val* cnf_matrix, size_t pitch,
+                                 size_t nb_var, size_t nb_clause,
+                                 term_val* constants, bool* mask)
+    {
+        auto x = utils::x_idx();
+        auto y = utils::y_idx();
+
+        if (x >= nb_clause || y >= nb_var)
+            return;
+
+        if (mask[x])
+            return;
+
+        auto pos = x * pitch + y;
+
+        // If the term is the negation, we can remove it from the clause.
+        if (cnf_matrix[pos] && cnf_matrix[pos] == -constants[y])
+            cnf_matrix[pos] = 0;
     }
 
 } // namespace device

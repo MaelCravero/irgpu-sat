@@ -17,4 +17,8 @@ namespace device
 
     __global__ void simplify(term_val* cnf_matrix, size_t pitch, size_t nb_var,
                              size_t nb_clause, term_val* constants, bool* mask);
+
+    __global__ void remove_terms(term_val* cnf_matrix, size_t pitch,
+                                 size_t nb_var, size_t nb_clause,
+                                 term_val* constants, bool* mask);
 } // namespace device
