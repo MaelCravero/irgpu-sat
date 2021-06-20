@@ -4,8 +4,9 @@
 
 namespace host
 {
-    std::optional<solution> dpll_solve(Cnf cnf);
-
+    std::optional<solution> solve_v1(Cnf cnf);
+    std::optional<solution> solve_v2(Cnf cnf);
+    std::optional<solution> solve_v3(Cnf cnf);
 }
 
 namespace device

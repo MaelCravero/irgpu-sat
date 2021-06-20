@@ -62,42 +62,6 @@ namespace host
         return ostr;
     }
 
-    std::optional<solution> Cnf::solve() const
-    {
-        std::size_t max_val = std::pow(2, nb_vars_);
-
-        auto flat_cnf = flatten();
-
-        /* int* dev_buffer = host::utils::malloc(vec); */
-        /* utils::memcpy(dev_buffer, vec); */
-
-        auto cnf_dev = Box(utils::init_from(flat_cnf));
-        auto res_host = std::vector<char>(max_val);
-        auto res_dev = Box(utils::malloc(res_host));
-
-        int block_size = 1024;
-        int num_block = (res_host.size() + block_size - 1) / block_size;
-        device::satisfies<<<num_block, block_size>>>(
-            cnf_dev.get(), flat_cnf.size(), res_dev.get(), nb_vars_);
-        utils::memcpy(res_host, res_dev.get());
-
-        for (size_t pos = 0; pos < res_host.size(); pos++)
-        {
-            if (res_host[pos])
-            {
-                solution sol;
-                for (int i = 0; i < nb_vars_; i++)
-                {
-                    sol.push_back((pos >> i) % 2);
-                }
-                std::cout << sol;
-                return sol;
-            }
-        }
-
-        return {};
-    }
-
     std::vector<term> Cnf::flatten() const
     {
         std::vector<term> res;

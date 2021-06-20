@@ -34,8 +34,6 @@ namespace host
         void remove_trivial_clauses();
         term_val* to_matrix() const;
 
-        std::optional<solution> solve() const;
-
         unsigned nb_var_get() const;
         unsigned nb_clause_get() const;
 
