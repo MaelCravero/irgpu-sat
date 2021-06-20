@@ -94,6 +94,9 @@ namespace host
             }
             std::cout << "\n";
 
+            free(host_local_cnf);
+            free(host_mask);
+
             cudaFree(dev_constants);
             bool conflict = false;
 
@@ -158,7 +161,7 @@ namespace device
         if (mask[x])
             return;
 
-        bool conflict = cnf_matrix[x + constant_pos] == -constant_sign;
+        bool conflict = cnf_matrix[x * nb_var + constant_pos] == -constant_sign;
 
         if (!conflict)
             return;
@@ -167,6 +170,7 @@ namespace device
         for (auto i = x * nb_var; i < (x + 1) * nb_var; i++)
         {
             if (cnf_matrix[i])
+            {
                 if (!vars_in_clause)
                     vars_in_clause++;
                 else
@@ -174,6 +178,7 @@ namespace device
                     vars_in_clause++;
                     break;
                 }
+            }
         }
 
         if (vars_in_clause == 1)
