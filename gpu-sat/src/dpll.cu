@@ -91,9 +91,9 @@ namespace host
 
         for (;;)
         {
-            utils::memcpy2D(local_cnf.get(), local_cnf_pitch, dev_cnf.get(),
-                            dev_cnf_pitch, nb_var, nb_clause,
-                            cudaMemcpyDeviceToDevice);
+            // utils::memcpy2D(local_cnf.get(), local_cnf_pitch, dev_cnf.get(),
+            //                 dev_cnf_pitch, nb_var, nb_clause,
+            //                 cudaMemcpyDeviceToDevice);
 
             // Backup last assigned constant
             auto cur_constant = constants[constant_size - 1];
@@ -103,17 +103,21 @@ namespace host
 
             constants[constant_size - 1] = cur_constant;
 
-            device::simplify<<<nb_blocks, 1024>>>(local_cnf, local_cnf_pitch,
-                                                  nb_var, nb_clause,
-                                                  dev_constants, mask);
+            // device::simplify<<<nb_blocks, 1024>>>(local_cnf, local_cnf_pitch,
+            //                                       nb_var, nb_clause,
+            //                                       dev_constants, mask);
 
-            device::remove_terms<<<dimGrid, dimBlock>>>(
-                local_cnf, local_cnf_pitch, nb_var, nb_clause, dev_constants,
-                mask);
+            // device::remove_terms<<<dimGrid, dimBlock>>>(
+            //     local_cnf, local_cnf_pitch, nb_var, nb_clause, dev_constants,
+            //     mask);
 
-            device::check_conflict<<<nb_blocks, 1024>>>(
-                local_cnf, local_cnf_pitch, nb_var, nb_clause,
-                constant_size - 1, constants[constant_size - 1], results, mask);
+            // device::check_conflict<<<nb_blocks, 1024>>>(
+            //     local_cnf, local_cnf_pitch, nb_var, nb_clause,
+            //     constant_size - 1, constants[constant_size - 1], results,
+            //     mask);
+            device::the_one_true_kernel<<<nb_blocks, 1024>>>(
+                dev_cnf, dev_cnf_pitch, nb_var, nb_clause, dev_constants,
+                constant_size - 1, constants[constant_size - 1], results);
 
             utils::memcpy(host_res, results.get(), clause_size,
                           cudaMemcpyDeviceToHost);
@@ -150,6 +154,56 @@ namespace host
 
 namespace device
 {
+    __global__ void the_one_true_kernel(term_val* cnf_matrix, size_t pitch,
+                                        size_t nb_var, size_t nb_clause,
+                                        term_val* constants,
+                                        size_t constant_pos,
+                                        term_val constant_sign, bool* results)
+    {
+        auto x = utils::x_idx();
+
+        if (x >= nb_clause)
+            return;
+
+        results[x] = false;
+
+        // There can only be a conflict if the clause contains the negation of
+        // the term.
+        bool conflict = cnf_matrix[x * pitch + constant_pos] == -constant_sign;
+
+        if (!conflict)
+            return;
+
+        // If there is a possible conflict, we have to check if the clause is
+        // unitary. If it is, there is indeed a conflict.
+
+        int vars_in_clause = 0;
+        for (auto i = 0; i < nb_var; i++)
+        {
+            auto pos = x * pitch + i;
+
+            if (!cnf_matrix[pos])
+                continue;
+
+            if (cnf_matrix[pos] == constants[i])
+                return;
+
+            if (constants[i])
+                continue;
+
+            if (!vars_in_clause)
+                vars_in_clause++;
+            else
+            {
+                vars_in_clause++;
+                break;
+            }
+        }
+
+        if (vars_in_clause == 1)
+            results[x] = true;
+    }
+
     __global__ void check_conflict(term_val* cnf_matrix, size_t pitch,
                                    size_t nb_var, size_t nb_clause,
                                    size_t constant_pos, term_val constant_sign,

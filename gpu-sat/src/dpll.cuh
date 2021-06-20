@@ -10,6 +10,12 @@ namespace host
 
 namespace device
 {
+    __global__ void the_one_true_kernel(term_val* cnf_matrix, size_t pitch,
+                                        size_t nb_var, size_t nb_clause,
+                                        term_val* constants,
+                                        size_t constant_pos,
+                                        term_val constant_sign, bool* results);
+
     __global__ void check_conflict(term_val* cnf_matrix, size_t pitch,
                                    size_t nb_var, size_t nb_clause,
                                    size_t constant_pos, term_val constant_sign,
