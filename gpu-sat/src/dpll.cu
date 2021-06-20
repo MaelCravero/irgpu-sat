@@ -38,31 +38,25 @@ namespace host
     std::optional<solution> dpll_solve(term_val* cnf_matrix, size_t nb_var,
                                        size_t nb_clause)
     {
-        // FIXME error codes should be checked (but i'm lazy)
-
         std::vector<term_val> constants(nb_var);
 
         int nb_blocks = (nb_clause / 1024) + 1;
 
-        term_val* dev_cnf;
-        cudaMalloc(&dev_cnf, nb_var * nb_clause * sizeof(term_val));
-        cudaMemcpy(dev_cnf, cnf_matrix, nb_var * nb_clause * sizeof(term_val),
-                   cudaMemcpyHostToDevice); // cnf seems to be on host
+        term_val* dev_cnf = utils::malloc<term_val>(nb_var * nb_clause);
+        utils::memcpy(dev_cnf, cnf_matrix,
+                      nb_var * nb_clause * sizeof(term_val),
+                      cudaMemcpyHostToDevice);
 
-        term_val* local_cnf;
-        cudaMalloc(&local_cnf, nb_var * nb_clause * sizeof(term_val));
+        term_val* local_cnf = utils::malloc<term_val>(nb_var * nb_clause);
 
         size_t clause_size = nb_clause * sizeof(bool);
-        bool* mask;
-        cudaMalloc(&mask, clause_size);
+        bool* mask = utils::malloc<bool>(nb_clause);
 
-        bool* results;
-        cudaMalloc(&results, nb_clause * sizeof(bool));
+        bool* results = utils::malloc<bool>(nb_clause);
 
         bool* host_res = (bool*)malloc(clause_size);
 
-        term_val* dev_constants;
-        cudaMalloc(&dev_constants, nb_var * sizeof(term_val));
+        term_val* dev_constants = utils::malloc<term_val>(nb_var);
 
         size_t constant_pos = 0;
         for (;;)
@@ -75,9 +69,9 @@ namespace host
             std::cout << "\n";
 #endif
 
-            cudaMemcpy(local_cnf, dev_cnf,
+            utils::memcpy(local_cnf, dev_cnf,
                        nb_var * nb_clause * sizeof(term_val),
-                       cudaMemcpyDeviceToDevice); // cnf seems to be on host
+                       cudaMemcpyDeviceToDevice);
 
             auto cur_constant = 0;
             if (constant_pos)
@@ -99,6 +93,7 @@ namespace host
 #ifdef DEBUG
             term_val* host_local_cnf =
                 (term_val*)malloc(nb_clause * sizeof(term_val) * nb_var);
+
             cudaMemcpy(host_local_cnf, local_cnf,
                        nb_clause * sizeof(term_val) * nb_var,
                        cudaMemcpyDeviceToHost);
@@ -128,7 +123,7 @@ namespace host
                     local_cnf, nb_var, nb_clause, constant_pos - 1,
                     constants[constant_pos - 1], results, mask);
 
-                cudaMemcpy(host_res, results, clause_size,
+                utils::memcpy(host_res, results, clause_size,
                            cudaMemcpyDeviceToHost);
 
                 for (auto i = 0; i < nb_clause; i++)

@@ -21,6 +21,19 @@ namespace host::utils
     }
 
     template <typename T>
+    T* malloc(size_t size)
+    {
+        T* res;
+
+        auto rc = cudaMalloc(&res, size * sizeof(T));
+
+        if (rc)
+            throw std::bad_alloc();
+
+        return res;
+    }
+
+    template <typename T>
     void memcpy(T* dst, const T* src, size_t size, cudaMemcpyKind kind)
     {
         auto rc = cudaMemcpy(dst, src, size, kind);
