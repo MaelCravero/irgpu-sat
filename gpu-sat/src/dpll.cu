@@ -2,6 +2,7 @@
 #include <optional>
 #include <vector>
 
+#include "box.cuh"
 #include "cnf.cuh"
 #include "dpll.cuh"
 #include "utils.cuh"
@@ -49,28 +50,31 @@ namespace host
         std::vector<term_val> constants(nb_var);
 
         // We copy the CNF on the device to lessen copy costs.
-        term_val* dev_cnf = utils::malloc<term_val>(nb_var * nb_clause);
-        utils::memcpy(dev_cnf, cnf_matrix,
+        auto dev_cnf = Box(utils::malloc<term_val>(nb_var * nb_clause));
+        utils::memcpy(dev_cnf.get(), cnf_matrix,
                       nb_var * nb_clause * sizeof(term_val),
                       cudaMemcpyHostToDevice);
 
+        free(cnf_matrix);
+        cnf_matrix = NULL;
+
         // This is the CNF used in the loop, which is recalculated.
-        term_val* local_cnf = utils::malloc<term_val>(nb_var * nb_clause);
+        auto local_cnf = Box(utils::malloc<term_val>(nb_var * nb_clause));
 
         size_t clause_size = nb_clause * sizeof(bool);
 
         // mask is used to determine is a clause is pruned.
-        bool* mask = utils::malloc<bool>(nb_clause);
+        auto mask = Box(utils::malloc<bool>(nb_clause));
 
         // results is used to determine is a clause has a conflict.
-        bool* results = utils::malloc<bool>(nb_clause);
+        auto results = Box(utils::malloc<bool>(nb_clause));
 
         // We cannot we used a std::vector<bool> due to bitset specialization
         // which disables the .data() method...
-        bool* host_res = (bool*)malloc(clause_size);
+        auto host_res = (bool*)malloc(clause_size);
 
         // Intermediary vector for passing constants to the device.
-        term_val* dev_constants = utils::malloc<term_val>(nb_var);
+        auto dev_constants = Box(utils::malloc<term_val>(nb_var));
 
         size_t constant_size = 0;
 
@@ -79,7 +83,7 @@ namespace host
 
         for (;;)
         {
-            utils::memcpy(local_cnf, dev_cnf,
+            utils::memcpy(local_cnf.get(), dev_cnf.get(),
                           nb_var * nb_clause * sizeof(term_val),
                           cudaMemcpyDeviceToDevice);
 
@@ -87,7 +91,7 @@ namespace host
             auto cur_constant = constants[constant_size - 1];
             constants[constant_size - 1] = 0;
 
-            utils::memcpy(dev_constants, constants);
+            utils::memcpy(dev_constants.get(), constants);
 
             constants[constant_size - 1] = cur_constant;
 
@@ -98,7 +102,7 @@ namespace host
                 local_cnf, nb_var, nb_clause, constant_size - 1,
                 constants[constant_size - 1], results, mask);
 
-            utils::memcpy(host_res, results, clause_size,
+            utils::memcpy(host_res, results.get(), clause_size,
                           cudaMemcpyDeviceToHost);
 
             bool conflict = false;
@@ -113,12 +117,6 @@ namespace host
                 if (!constant_size)
                 {
                     free(host_res);
-                    cudaFree(dev_cnf);
-                    cudaFree(results);
-                    cudaFree(local_cnf);
-                    cudaFree(mask);
-                    cudaFree(dev_constants);
-
                     return {};
                 }
             }
@@ -131,11 +129,6 @@ namespace host
         }
 
         free(host_res);
-        cudaFree(dev_cnf);
-        cudaFree(results);
-        cudaFree(local_cnf);
-        cudaFree(mask);
-        cudaFree(dev_constants);
 
         return {calculate_solution(constants)};
     }
