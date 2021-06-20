@@ -1,6 +1,9 @@
 #include "dpll.hh"
 
+#include <algorithm>
 #include <iostream>
+
+#include "utils.hh"
 
 /* namespace */
 /* { */
@@ -80,6 +83,36 @@ namespace
 
 } // namespace
 
+bool Dpll::check_conflict(const Cnf& cnf,
+                          const std::vector<Cnf::term>& assigned,
+                          Cnf::term last)
+{
+    for (auto clause : cnf.expr_)
+    {
+        if (!utils::contains(clause, -last))
+            continue;
+
+        int vars_in_clause = 0;
+        bool clause_is_true = false;
+        for (auto term : clause)
+        {
+            if (utils::contains(assigned, term))
+            {
+                clause_is_true = true;
+                break; // The clause is true
+            }
+
+            if (!utils::contains(assigned, -term))
+                vars_in_clause++;
+        }
+
+        if (vars_in_clause == 1 && !clause_is_true)
+            return true;
+    }
+
+    return false;
+}
+
 std::optional<Cnf::solution> Dpll::solve(const Cnf& cnf)
 {
     std::vector<Cnf::term> assigned;
@@ -92,15 +125,22 @@ std::optional<Cnf::solution> Dpll::solve(const Cnf& cnf)
 
     for (;;)
     {
-        auto local = cnf;
+        /* auto local = cnf; */
         auto conflict = false;
 
         if (!assigned.empty())
         {
-            conflict = local.unit_propagation(
-                std::set<Cnf::term>{assigned.begin(), assigned.end() - 1});
+            /*             conflict = local.unit_propagation( */
+            /*                 std::set<Cnf::term>{assigned.begin(),
+             * assigned.end() - 1}); */
+            /*  */
+            /*             conflict = conflict ||
+             * local.unit_propagation(assigned.back()); */
 
-            conflict = conflict || local.unit_propagation(assigned.back());
+            auto last = assigned.back();
+            assigned.pop_back();
+            conflict = check_conflict(cnf, assigned, last);
+            assigned.emplace_back(last);
         }
 
         if (conflict)

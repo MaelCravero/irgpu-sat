@@ -11,4 +11,10 @@ namespace utils
             container.end());
     }
 
+    bool contains(auto& container, auto elt)
+    {
+        return std::find(container.begin(), container.end(), elt)
+            != container.end();
+    }
+
 } // namespace utils
