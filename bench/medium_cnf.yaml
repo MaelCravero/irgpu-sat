@@ -1,6 +1,10 @@
 input_files:
   - "dimacs/regalloc_mini_morpho.cnf"
+  - "dimacs/regalloc_mini_morpho_big.cnf"
+  - "dimacs/regalloc_mini_morpho_bigger.cnf"
+  - "dimacs/cnf_48_vars.cnf"
   - "dimacs/regalloc_queens.cnf"
+  - "dimacs/pruned_regalloc_queens.cnf"
 
 programs:
   - program_name: "build/cpu-sat/cpu-sat"
