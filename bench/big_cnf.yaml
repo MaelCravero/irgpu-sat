@@ -2,6 +2,10 @@ input_files:
   - "dimacs/cnf_56_vars.cnf"
   - "dimacs/regalloc_queens_big.cnf"
   - "dimacs/regalloc_queens_many_vars.cnf"
+  - "dimacs/regalloc_evalexp.cnf"
+  - "dimacs/regalloc_for-scope.cnf"
+  - "dimacs/regalloc_merge.cnf"
+  - "dimacs/regalloc_use-an-array.cnf"
 
 programs:
   - program_name: "build/cpu-sat/cpu-sat"
