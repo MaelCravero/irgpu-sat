@@ -21,6 +21,10 @@ int main(int argc, char** argv)
 
     if (argc == 2 || std::string(argv[1]) == "-v3")
         res = solve_v3(cnf);
+    else if (std::string(argv[1]) == "-v2-no-pitch")
+        res = solve_v2_no_pitch(cnf);
+    else if (std::string(argv[1]) == "-v3-no-pitch")
+        res = solve_v3_no_pitch(cnf);
     else if (std::string(argv[1]) == "-v1")
         res = solve_v1(cnf);
     else
