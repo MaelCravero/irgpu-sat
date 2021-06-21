@@ -1,0 +1,24 @@
+input_files:
+  - "dimacs/basic.cnf"
+  - "dimacs/basic_no_unit.cnf"
+  - "dimacs/basic_unsat.cnf"
+  - "dimacs/cnf_24_vars.cnf"
+  - "dimacs/cnf_35_vars.cnf"
+  - "dimacs/cnf_36_vars.cnf"
+  - "dimacs/cnf_38_vars.cnf"
+  - "dimacs/cnf_42_vars.cnf"
+  - "dimacs/pruned_regalloc_single_var.cnf"
+  - "dimacs/regalloc_single_var.cnf"
+  - "dimacs/regalloc_fact.cnf"
+
+programs:
+  - program_name: "build/cpu-sat/cpu-sat"
+    parameters:
+      - "-v2"
+      - "-v3"
+  - program_name: "build/gpu-sat/gpu-sat"
+    parameters:
+      - "-v2"
+      - "-v2-no-pitch"
+      - "-v3"
+      - "-v3-no-pitch"

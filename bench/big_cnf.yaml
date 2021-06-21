@@ -1,0 +1,16 @@
+input_files:
+  - "dimacs/cnf_56_vars.cnf"
+  - "dimacs/regalloc_queens_big.cnf"
+  - "dimacs/regalloc_queens_many_vars.cnf"
+
+programs:
+  - program_name: "build/cpu-sat/cpu-sat"
+    parameters:
+      - "-v2"
+      - "-v3"
+  - program_name: "build/gpu-sat/gpu-sat"
+    parameters:
+      - "-v2"
+      - "-v2-no-pitch"
+      - "-v3"
+      - "-v3-no-pitch"

@@ -1,0 +1,15 @@
+input_files:
+  - "dimacs/regalloc_mini_morpho.cnf"
+  - "dimacs/regalloc_queens.cnf"
+
+programs:
+  - program_name: "build/cpu-sat/cpu-sat"
+    parameters:
+      - "-v2"
+      - "-v3"
+  - program_name: "build/gpu-sat/gpu-sat"
+    parameters:
+      - "-v2"
+      - "-v2-no-pitch"
+      - "-v3"
+      - "-v3-no-pitch"
